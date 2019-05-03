@@ -1,0 +1,7 @@
+application:
+  name: ExcelUtils
+  package: me.xethh.util.ExcelUtils
+spring:
+  application:
+    name: ${application.name}
+
