@@ -1,8 +1,11 @@
 package me.xethh.util.excelUtils.model;
 
+import org.apache.poi.hssf.usermodel.HSSFFont;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFFont;
 
 import java.util.Arrays;
 
@@ -29,7 +32,7 @@ public class CellStyleScanningModel {
 
     public CellStyleScanningModel(Workbook workbook, CellStyle cellStyle) {
         this.dataFromat = cellStyle.getDataFormatString();
-        this.font = new Font(workbook.getFontAt(cellStyle.getFontIndexAsInt()));
+        this.font = new Font(workbook, workbook.getFontAt(cellStyle.getFontIndexAsInt()));
         this.isHidden = cellStyle.getHidden();
         this.isLocked = cellStyle.getLocked();
         this.isQuotedPrefix = cellStyle.getQuotePrefixed();
@@ -83,12 +86,33 @@ public class CellStyleScanningModel {
     }
 
     public class Font{
-        public Font(org.apache.poi.ss.usermodel.Font font) {
+        public Font(Workbook workbook, org.apache.poi.ss.usermodel.Font font) {
             this.name = font.getFontName();
             this.fontHeightInPoint = font.getFontHeightInPoints();
             this.isItalic = font.getItalic();
             this.isStrikeout = font.getStrikeout();
             this.color = font.getColor();
+
+            if (null != font) {
+                if (font instanceof XSSFFont) {
+                    XSSFColor temp = ((XSSFFont) font).getXSSFColor();
+                    if (null != temp) {
+                        byte[] rgb = temp.getRGB();
+                        this.colorRgb = new short[temp.getRGB().length];
+                        for (int i = 0; i < rgb.length; i++) {
+                            this.colorRgb[i] = (short) (rgb[i] & 0xff);
+                        }
+                    }
+                }
+                if(font instanceof HSSFFont){
+                    HSSFColor tempColor = ((HSSFFont) font).getHSSFColor((HSSFWorkbook) workbook);
+                    if(null != tempColor){
+                        this.colorRgb = tempColor.getTriplet();
+                    }
+
+                }
+            }
+
             this.typeOffset = font.getTypeOffset();
             this.isUnderLine = font.getUnderline();
             this.charSet = font.getCharSet();
@@ -101,6 +125,7 @@ public class CellStyleScanningModel {
         private boolean isItalic;
         private boolean isStrikeout;
         private short color;
+        private short[] colorRgb;
         private short typeOffset;
         private byte isUnderLine;
         private int charSet;
@@ -178,6 +203,22 @@ public class CellStyleScanningModel {
             isBold = bold;
         }
 
+        public short[] getColorRgb() {
+            return colorRgb;
+        }
+
+        public void setColorRgb(short[] colorRgb) {
+            this.colorRgb = colorRgb;
+        }
+
+        public byte getIsUnderLine() {
+            return isUnderLine;
+        }
+
+        public void setIsUnderLine(byte isUnderLine) {
+            this.isUnderLine = isUnderLine;
+        }
+
         @Override
         public String toString() {
             return "Font{" +
@@ -186,6 +227,7 @@ public class CellStyleScanningModel {
                     ", isItalic=" + isItalic +
                     ", isStrikeout=" + isStrikeout +
                     ", color=" + color +
+                    ", colorRgb=" + Arrays.toString(colorRgb) +
                     ", typeOffset=" + typeOffset +
                     ", isUnderLine=" + isUnderLine +
                     ", charSet=" + charSet +
