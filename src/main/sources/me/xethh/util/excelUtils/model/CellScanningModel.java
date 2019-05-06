@@ -7,6 +7,7 @@ public class CellScanningModel {
     public enum CellType{
         Integer, Decimal, String, Blank, Error, Date, Boolean, Formula
     }
+    private String sheetName;
     private Integer actRow;
     private Integer actCol;
     private CellType cellType;
@@ -56,7 +57,7 @@ public class CellScanningModel {
     }
 
     public String getCellStr() {
-        if(this.cellStr==null) this.cellStr = CellReference.convertNumToColString(actCol)+actRow;
+        if(this.cellStr==null) this.cellStr = CellReference.convertNumToColString(actCol)+(actRow+1);
         return this.cellStr;
     }
 
@@ -64,10 +65,19 @@ public class CellScanningModel {
         this.cellStr = getCellStr();
     }
 
+    public String getSheetName() {
+        return sheetName;
+    }
+
+    public void setSheetName(String sheetName) {
+        this.sheetName = sheetName;
+    }
+
     @Override
     public String toString() {
         return "CellScanningModel{" +
-                "actRow=" + actRow +
+                "sheetName='" + sheetName + '\'' +
+                ", actRow=" + actRow +
                 ", actCol=" + actCol +
                 ", cellType=" + cellType +
                 ", value=" + value +
@@ -75,4 +85,5 @@ public class CellScanningModel {
                 ", cellStr='" + cellStr + '\'' +
                 '}';
     }
+
 }

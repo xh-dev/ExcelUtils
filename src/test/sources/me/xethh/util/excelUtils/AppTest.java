@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 import me.xethh.util.excelUtils.common.ExcelReadValue;
 import me.xethh.util.excelUtils.model.CellScanningModel;
 import me.xethh.util.excelUtils.model.CellStyleScanningModel;
+import me.xethh.util.excelUtils.reading.WorkbookScanning;
 import me.xethh.utils.wrapper.Tuple2;
 import org.apache.poi.hssf.usermodel.HSSFDateUtil;
 import org.apache.poi.ss.usermodel.Cell;
@@ -35,22 +36,17 @@ public class AppTest
     public static void main(String[] args) throws IOException {
         InputStream is = new FileInputStream(new File("./src/test/resources/TestingBase.xlsx"));
         XSSFWorkbook workbook = new XSSFWorkbook(is);
-        XSSFSheet sheet = workbook.getSheetAt(0);
-        Iterator<Row> rowIt = sheet.rowIterator();
-        while(rowIt.hasNext()){
-            Iterator<Cell> cellIt = rowIt.next().cellIterator();
-            while (cellIt.hasNext()){
-                Cell cell = cellIt.next();
-                CellScanningModel model = new CellScanningModel();
-                model.setActRow(cell.getRowIndex()+1);
-                model.setActCol(cell.getColumnIndex());
-                model.setCellStyle(new CellStyleScanningModel(workbook,cell.getCellStyle()));
-                model.setCellStr("");
-                Tuple2<CellScanningModel.CellType, Object> value = ExcelReadValue.read(cell);
-                model.setValue(value.getV2());
-                model.setCellType(value.getV1());
-                System.out.println(model);
-            }
+        // Iterator<CellScanningModel> scanning = WorkbookScanning.scan(workbook);
+        // while(scanning.hasNext()){
+        //     System.out.println(scanning.next());
+        // }
+        Iterator<String[]> scanning = WorkbookScanning.scanAsArr(workbook);
+        while(scanning.hasNext()){
+            for(String s:scanning.next())
+                System.out.print(s+", ");
+            System.out.println();
         }
+        // FileOutputStream os = new FileOutputStream(new File("./src/test/resources/TestingBase_revised.xlsx"));
+        
     }
 }

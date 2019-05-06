@@ -54,8 +54,8 @@ public class CellStyleScanningModel {
         this.foregroundColor = IndexedColors.fromInt(cellStyle.getFillForegroundColor());
 
         if(cellStyle.getFillBackgroundColorColor()!=null && cellStyle.getFillBackgroundColorColor() instanceof XSSFColor){
-            if(((XSSFColor) cellStyle.getFillBackgroundColorColor()).getRGB()!=null){
-                byte[] rgb = ((XSSFColor) cellStyle.getFillBackgroundColorColor()).getRGB();
+            if(((XSSFColor) cellStyle.getFillBackgroundColorColor()).getARGB()!=null){
+                byte[] rgb = ((XSSFColor) cellStyle.getFillBackgroundColorColor()).getARGB();
                 this.foregroundRGB = new short[rgb.length];
                 for(int i=0;i<this.foregroundRGB.length;i++)
                     this.foregroundRGB[i] = (short) (rgb[i] & 0xff);
@@ -67,8 +67,8 @@ public class CellStyleScanningModel {
             }
         }
         if(cellStyle.getFillBackgroundColorColor()!=null && cellStyle.getFillBackgroundColorColor() instanceof XSSFColor){
-            if(((XSSFColor) cellStyle.getFillForegroundColorColor()).getRGB()!=null){
-                byte[] rgb = ((XSSFColor) cellStyle.getFillForegroundColorColor()).getRGB();
+            if(((XSSFColor) cellStyle.getFillForegroundColorColor()).getARGB()!=null){
+                byte[] rgb = ((XSSFColor) cellStyle.getFillForegroundColorColor()).getARGB();
                 this.foregroundRGB = new short[rgb.length];
                 for(int i=0;i<this.foregroundRGB.length;i++)
                     this.foregroundRGB[i] = (short) (rgb[i] & 0xff);
