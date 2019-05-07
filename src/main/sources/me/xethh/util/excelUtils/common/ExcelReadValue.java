@@ -7,6 +7,31 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.util.CellReference;
 
 public class ExcelReadValue {
+    public static int[] toIntArr(String[] ss){
+        int[] is = new int[ss.length];
+        for(int i=0;i<ss.length;i++){
+            is[i] = Integer.parseInt(ss[i]);
+        }
+        return is;
+    }
+    public static byte[] toByteArr(String[] ss){
+        int[] is = toIntArr(ss);
+        byte[] ba = new byte[ss.length];
+        for(int i=0;i<is.length;i++){
+            ba[i] = (byte) is[i];
+        }
+        return ba;
+    }
+    public static boolean isPureDark(String[] ss){
+        int[] s = toIntArr(ss);
+        if(s.length==3){
+            return (s[0]+s[1]+s[2])==0;
+        }
+        else if(s.length==4){
+            return (s[1]+s[2]+s[3])==0;
+        }
+        throw new RuntimeException("Array not supported: "+ss);
+    }
     public static Tuple2<CellScanningModel.CellType, Object> read(Cell cell){
         switch (cell.getCellType()){
             case BLANK:
