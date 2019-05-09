@@ -1,12 +1,13 @@
 package me.xethh.util.excelUtils.reading;
 
 import me.xethh.util.excelUtils.common.ExcelReadValue;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.FillPatternType;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.*;
 
 import java.io.*;
+import java.util.Date;
 import java.util.Iterator;
 
 public class ReadingFactory {
@@ -22,57 +23,62 @@ public class ReadingFactory {
         }
     }
     public static void scanExcel(String source, String dest) throws IOException {
-        InputStream is = new FileInputStream(new File("./src/test/resources/TestingBase.xlsx"));
+        InputStream is = new FileInputStream(new File(source));
         XSSFWorkbook workbook = new XSSFWorkbook(is);
         Iterator<String[]> scanning = WorkbookScanning.scanAsArr(workbook);
-        XSSFWorkbook wb = new XSSFWorkbook();
-        XSSFSheet sheet = wb.createSheet("abc");
+        XSSFWorkbook xwb = new XSSFWorkbook();
+        Workbook wb = new SXSSFWorkbook(xwb, 100);
+        int sheetIndex = 0;
+        Sheet sheet = wb.createSheet("Extracted_"+sheetIndex);
+        Date dateStart = new Date();
+        System.out.println("Start time: "+dateStart);
         int row = 0;
+        int count=0;
         while(scanning.hasNext()){
-            String[] rowRecord = scanning.next();
-            XSSFRow sheetRow = sheet.createRow(row);
-            for(int i=0;i<rowRecord.length;i++) {
-                XSSFCell cell = sheetRow.createCell(i);
-                checkAndFillColor(wb, cell, i, 8, rowRecord);
-                checkAndFillColor(wb, cell, i, 19, rowRecord);
-                checkAndFillColor(wb, cell, i, 27, rowRecord);
-                // if(i==27 && rowRecord[i]!=null && !rowRecord[i].equals("") && rowRecord[i].split(",").length==3){
-                //     byte[] fontColorByte = ExcelReadValue.toByteArr(rowRecord[i].split(","));
-                //     if(!ExcelReadValue.isPureDark(rowRecord[i].split(","))){
-                //         XSSFCellStyle style = wb.createCellStyle();
-                //         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                //         style.setFillForegroundColor(new XSSFColor(fontColorByte,wb.getStylesSource().getIndexedColors()));
-                //         cell.setCellStyle(style);
-                //     }
-                // }
-                // if(i==8 && rowRecord[8]!=null && !rowRecord[8].equals("") && rowRecord[8].split(",").length==4){
-                //     byte[] fontColorByte = ExcelReadValue.toByteArr(rowRecord[i].split(","));
-                //     if(!ExcelReadValue.isPureDark(rowRecord[i].split(","))){
-                //         XSSFCellStyle style = wb.createCellStyle();
-                //         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                //         style.setFillForegroundColor(new XSSFColor(fontColorByte,wb.getStylesSource().getIndexedColors()));
-                //         sheetRow.getCell(8).setCellStyle(style);
-                //     }
-                // }
-                // if(i == 19 && rowRecord[19]!=null && !rowRecord[19].equals("") && rowRecord[19].split(",").length==4){
-                //     byte[] fontColorByte = ExcelReadValue.toByteArr(rowRecord[i].split(","));
-                //     if(!ExcelReadValue.isPureDark(rowRecord[i].split(","))){
-                //         XSSFCellStyle style = wb.createCellStyle();
-                //         style.setFillForegroundColor(new XSSFColor(fontColorByte,wb.getStylesSource().getIndexedColors()));
-                //         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                //         sheetRow.getCell(19).setCellStyle(style);
-                //     }
-                // }
-                cell.setCellValue(rowRecord[i]);
+            if(count!=0 && count%1000==0){
+                System.out.println(String.format("Working on %d at %s", count, new Date().toString()));
             }
+            if(count%900000==0){
+                sheetIndex++;
+                sheet = wb.createSheet("Extracted_"+sheetIndex);
+                row=0;
+            }
+            // System.out.println("Find next");
+            String[] rowRecord = scanning.next();
+            // System.out.println("Find complete");
+            Row sheetRow = sheet.createRow(row);
+            for(int i=0;i<rowRecord.length;i++) {
+                // System.out.println("fill "+i);
+                Cell cell = sheetRow.createCell(i);
+                // System.out.println("Style 1");
+                checkAndFillColor(((SXSSFWorkbook)wb).getXSSFWorkbook(), cell, i, 8, rowRecord);
+                // System.out.println("Style 2");
+                checkAndFillColor(((SXSSFWorkbook)wb).getXSSFWorkbook(), cell, i, 19, rowRecord);
+                // System.out.println("Style 3");
+                checkAndFillColor(((SXSSFWorkbook)wb).getXSSFWorkbook(), cell, i, 27, rowRecord);
+                // System.out.println("fill start");
+                cell.setCellValue(rowRecord[i]);
+                // System.out.println("fill end");
+            }
+            System.out.println(String.format("[%d]Processing sheet: %s[%s]", count, rowRecord[0],rowRecord[3]));
             row++;
+            count++;
         }
+        workbook.close();
+        workbook=null;
         try {
-            String filePath = "./target/TestingBase_revised.xlsx";
+            Date dateStage2 = new Date();
+            System.out.println("Start stage: "+dateStage2);
+            String filePath = dest;
             if(new File(filePath).exists()) new File(filePath).delete();
             FileOutputStream outputStream = new FileOutputStream(filePath);
             wb.write(outputStream);
             wb.close();
+
+            Date dateComplete = new Date();
+            System.out.println("Start time: "+dateStart);
+            System.out.println("Start stage: "+dateStage2);
+            System.out.println("Completed: "+dateComplete);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
