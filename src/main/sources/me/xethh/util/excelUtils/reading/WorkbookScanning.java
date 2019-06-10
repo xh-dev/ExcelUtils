@@ -5,15 +5,80 @@ import me.xethh.util.excelUtils.common.ExcelReadValue;
 import me.xethh.util.excelUtils.model.CellScanningModel;
 import me.xethh.util.excelUtils.model.CellStyleScanningModel;
 import me.xethh.utils.wrapper.Tuple2;
+import me.xethh.utils.wrapper.Tuple3;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellReference;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class WorkbookScanning {
+    public static class SheetScanningIterator implements Iterator<CellScanningModel> {
+        private Workbook workbook;
+        private Iterator<Tuple3<String,String,String>> iterator;
+        private int startRow, startCol, endCol, endRow, currentRow, currentCol;
+        private Iterator<Row> rowIt;
+        private Iterator<Cell> cellIt;
+        private SheetScanningIterator(Workbook workbook, List<Tuple3<String, String, String>> areaList){
+            this.workbook = workbook;
+            iterator = areaList.iterator();
+            if(null!=iterator && iterator.hasNext()){
+                Tuple3<String, String, String> range = iterator.next();
+                Sheet sheet = workbook.getSheetAt(workbook.getSheetIndex(range.getV1()));
+                Pattern pattern = Pattern.compile("(\\w+)(\\d+)");
+                Matcher matcher = pattern.matcher(range.getV2());
+                startRow = Integer.parseInt(matcher.group(2));
+                startCol = CellReference.convertColStringToIndex(matcher.group(1));
+                matcher = pattern.matcher(range.getV3());
+                endRow = Integer.parseInt(matcher.group(2));
+                endCol = CellReference.convertColStringToIndex(matcher.group(1));
+            }
+        }
+        @Override
+        public boolean hasNext() {
+            if(endRow > currentRow && endCol > currentCol){
+                if(iterator.hasNext()){
+                    iterator.next();
+                    return hasNext();
+                }
+                else
+                    return false;
+            }
+            if(endCol>currentCol){
+                endRow++;
+                endCol=startCol;
+                return hasNext();
+            }
+            currentCol++;
+            return true;
+        }
+
+        @Override
+        public CellScanningModel next() {
+            Cell cell = cellIt.next();
+            CellScanningModel model = new CellScanningModel();
+            model.setSheetName(cell.getSheet().getSheetName());
+            model.setActRow(cell.getRowIndex());
+            model.setActCol(cell.getColumnIndex());
+            model.setCellStyle(new CellStyleScanningModel(workbook,cell.getCellStyle()));
+            model.setCellStr("");
+            Tuple2<CellScanningModel.CellType, Object> value = ExcelReadValue.read(cell);
+            model.setValue(value.getV2());
+            model.setCellType(value.getV1());
+            return model;
+        }
+
+        @Override
+        public void remove() {
+
+        }
+    }
     public static class ScanningIterator implements Iterator<CellScanningModel> {
         private Workbook workbook;
         private Iterator<Integer> itSheetIndex;
@@ -75,6 +140,9 @@ public class WorkbookScanning {
         public void remove() {
 
         }
+    }
+    public static Iterator<CellScanningModel> scan(Workbook workbook, List<Tuple3<String,String,String>> areaList){
+        return new SheetScanningIterator(workbook, areaList);
     }
     public static Iterator<CellScanningModel> scan(Workbook workbook){
         return new ScanningIterator(workbook);
