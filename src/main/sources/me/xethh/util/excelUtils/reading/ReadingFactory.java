@@ -1,50 +1,62 @@
 package me.xethh.util.excelUtils.reading;
 
+import me.xethh.util.excelUtils.common.ColorUtils;
 import me.xethh.util.excelUtils.common.ExcelReadValue;
+import me.xethh.util.excelUtils.model.CellScanningModel;
+import me.xethh.utils.wrapper.Tuple3;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.*;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ReadingFactory {
     private static void checkAndFillColor(XSSFWorkbook wb, Cell cell, int nowIndex, int index, String[] rowRecord){
-        if(nowIndex==index && rowRecord[index]!=null && !rowRecord[index].equals("") && (rowRecord[index].split(",").length==3 || rowRecord[index].split(",").length==4)){
-            byte[] fontColorByte = ExcelReadValue.toByteArr(rowRecord[index].split(","));
-            if(!ExcelReadValue.isPureDark(rowRecord[index].split(","))){
+        Pattern pattern = Pattern.compile("TempCTColor\\{a=(\\d+), r=(\\d+), g=(\\d+), b=(\\d+), tint=([\\-0-9\\.]+)\\}");
+
+        if(nowIndex==index && rowRecord[index]!=null && !rowRecord[index].equals("")){
+            Matcher matcher = pattern.matcher(rowRecord[index]);
+            if(matcher.matches()){
+                double tint = Double.valueOf(matcher.group(5));
+                int a = Integer.parseInt(matcher.group(1));
+                int r = ColorUtils.applyTint(Integer.parseInt(matcher.group(2)),tint);
+                int g = ColorUtils.applyTint(Integer.parseInt(matcher.group(3)),tint);
+                int b = ColorUtils.applyTint(Integer.parseInt(matcher.group(4)),tint);
+
+                byte[] bytes = new byte[]{(byte) a, (byte) r, (byte) g, (byte) b};
+
+                XSSFColor color = new XSSFColor(bytes, wb.getStylesSource().getIndexedColors());
+                // color.setTint(tint);
                 XSSFCellStyle style = wb.createCellStyle();
                 style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                style.setFillForegroundColor(new XSSFColor(fontColorByte,wb.getStylesSource().getIndexedColors()));
+                style.setFillForegroundColor(color);
                 cell.setCellStyle(style);
             }
         }
     }
-    public static void scanExcel(String source, String dest) throws IOException {
-        InputStream is = new FileInputStream(new File(source));
-        XSSFWorkbook workbook = new XSSFWorkbook(is);
-        Iterator<String[]> scanning = WorkbookScanning.scanAsArr(workbook);
+    public static void scanExcel(InputStream is, String dest, Iterator<CellScanningModel> cellModelList){
+
         XSSFWorkbook xwb = new XSSFWorkbook();
         Workbook wb = new SXSSFWorkbook(xwb, 100);
-        int sheetIndex = 0;
-        Sheet sheet = wb.createSheet("Extracted_"+sheetIndex);
+        Sheet sheet = wb.createSheet("Extracted");
         Date dateStart = new Date();
         System.out.println("Start time: "+dateStart);
-        int row = 0;
-        int count=0;
-        while(scanning.hasNext()){
-            if(count!=0 && count%1000==0){
-                System.out.println(String.format("Working on %d at %s", count, new Date().toString()));
-            }
-            if(count%900000==0){
-                sheetIndex++;
-                sheet = wb.createSheet("Extracted_"+sheetIndex);
-                row=0;
-            }
+        sheet.createRow(0);
+        for(int i=0; i < CellScanningModel.toStringArrHeader().length;i++)
+            sheet.getRow(0).createCell(i).setCellValue(CellScanningModel.toStringArrHeader()[i]);
+
+        int row = 1;
+        while(cellModelList.hasNext()){
             // System.out.println("Find next");
-            String[] rowRecord = scanning.next();
+            CellScanningModel next = cellModelList.next();
+            String[] rowRecord = next.toStringArr();
             // System.out.println("Find complete");
             Row sheetRow = sheet.createRow(row);
             for(int i=0;i<rowRecord.length;i++) {
@@ -60,12 +72,8 @@ public class ReadingFactory {
                 cell.setCellValue(rowRecord[i]);
                 // System.out.println("fill end");
             }
-            System.out.println(String.format("[%d]Processing sheet: %s[%s]", count, rowRecord[0],rowRecord[3]));
             row++;
-            count++;
         }
-        workbook.close();
-        workbook=null;
         try {
             Date dateStage2 = new Date();
             System.out.println("Start stage: "+dateStage2);
@@ -83,6 +91,33 @@ public class ReadingFactory {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+    }
+
+    public static void scanExcel(String source, String dest, List<Tuple3<String, String,String>> areaList) throws IOException {
+        try(
+                InputStream is = new FileInputStream(new File(source));
+                XSSFWorkbook workbook = new XSSFWorkbook(is);
+                )
+        {
+            Iterator<CellScanningModel> scanning = WorkbookScanning.scan(workbook, areaList);
+            scanExcel(is, dest, scanning);
+        }
+        finally{
+
+            System.out.println("Completed extracting");
+        }
+    }
+    public static void scanExcel(String source, String dest) throws IOException {
+        try(
+                InputStream is = new FileInputStream(new File(source));
+                XSSFWorkbook workbook = new XSSFWorkbook(is);
+                )
+        {
+            Iterator<CellScanningModel> scanning = WorkbookScanning.scan(workbook);
+            scanExcel(is, dest, scanning);
+
         }
     }
 }

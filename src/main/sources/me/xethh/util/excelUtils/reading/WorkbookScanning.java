@@ -1,6 +1,5 @@
 package me.xethh.util.excelUtils.reading;
 
-import com.sun.corba.se.spi.orbutil.threadpool.Work;
 import me.xethh.util.excelUtils.common.ExcelReadValue;
 import me.xethh.util.excelUtils.model.CellScanningModel;
 import me.xethh.util.excelUtils.model.CellStyleScanningModel;
@@ -23,51 +22,78 @@ public class WorkbookScanning {
         private Workbook workbook;
         private Iterator<Tuple3<String,String,String>> iterator;
         private int startRow, startCol, endCol, endRow, currentRow, currentCol;
-        private Iterator<Row> rowIt;
-        private Iterator<Cell> cellIt;
+        private Sheet currentSheet;
+        private Row currentExcelRow;
         private SheetScanningIterator(Workbook workbook, List<Tuple3<String, String, String>> areaList){
             this.workbook = workbook;
             iterator = areaList.iterator();
-            if(null!=iterator && iterator.hasNext()){
-                Tuple3<String, String, String> range = iterator.next();
-                Sheet sheet = workbook.getSheetAt(workbook.getSheetIndex(range.getV1()));
-                Pattern pattern = Pattern.compile("(\\w+)(\\d+)");
-                Matcher matcher = pattern.matcher(range.getV2());
-                startRow = Integer.parseInt(matcher.group(2));
+            if(null!=iterator && iterator.hasNext())
+                setupStartEndPont();
+        }
+        private void setupStartEndPont(){
+            Tuple3<String, String, String> range = iterator.next();
+            currentSheet = workbook.getSheetAt(workbook.getSheetIndex(range.getV1()));
+            Pattern pattern = Pattern.compile("([a-zA-Z]+)([0-9]+)");
+            Matcher matcher = pattern.matcher(range.getV2());
+            if(matcher.matches()){
+                startRow = Integer.parseInt(matcher.group(2))-1;
                 startCol = CellReference.convertColStringToIndex(matcher.group(1));
-                matcher = pattern.matcher(range.getV3());
-                endRow = Integer.parseInt(matcher.group(2));
+                currentRow = startRow;
+                currentCol=startCol-1;
+                currentExcelRow = null;
+            }
+            else {
+                throw new RuntimeException(String.format("Unexpected error pattern not match %s[%s]",pattern.toString(),range.getV2()));
+            }
+            matcher = pattern.matcher(range.getV3());
+            if(matcher.matches()){
+                endRow = Integer.parseInt(matcher.group(2))-1;
                 endCol = CellReference.convertColStringToIndex(matcher.group(1));
+            }
+            else {
+                throw new RuntimeException(String.format("Unexpected error pattern not match %s[%s]",pattern.toString(),range.getV3()));
             }
         }
         @Override
         public boolean hasNext() {
-            if(endRow > currentRow && endCol > currentCol){
-                if(iterator.hasNext()){
-                    iterator.next();
-                    return hasNext();
+            try {
+                if (currentCol < endCol) {
+                    currentCol++;
+                    return currentSheet.getRow(currentRow).getCell(currentCol) != null || hasNext();
                 }
-                else
-                    return false;
+                if (currentCol == endCol && currentRow < endRow) {
+                    currentCol = startCol;
+                    while (currentSheet.getRow(++currentRow)==null)
+                        if(currentRow==endRow)
+                            return false;
+
+                    return currentSheet.getRow(currentRow).getCell(currentCol) != null || hasNext();
+                }
+                if (endRow == currentRow && endCol == currentCol) {
+                    if (iterator.hasNext()) {
+                        setupStartEndPont();
+                        return currentSheet.getRow(currentRow).getCell(currentCol) != null || hasNext();
+                    } else
+                        return false;
+                }
             }
-            if(endCol>currentCol){
-                endRow++;
-                endCol=startCol;
-                return hasNext();
+            catch (Exception ex){
+                ex.printStackTrace();
             }
-            currentCol++;
-            return true;
+            throw new RuntimeException("Unexpected error");
         }
+
 
         @Override
         public CellScanningModel next() {
-            Cell cell = cellIt.next();
+            Cell cell = currentSheet.getRow(currentRow).getCell(currentCol);
+            if(cell==null)
+                return null;
             CellScanningModel model = new CellScanningModel();
-            model.setSheetName(cell.getSheet().getSheetName());
-            model.setActRow(cell.getRowIndex());
-            model.setActCol(cell.getColumnIndex());
+            model.setSheetName(currentSheet.getSheetName());
+            model.setActRow(currentRow);
+            model.setActCol(currentCol);
             model.setCellStyle(new CellStyleScanningModel(workbook,cell.getCellStyle()));
-            model.setCellStr("");
             Tuple2<CellScanningModel.CellType, Object> value = ExcelReadValue.read(cell);
             model.setValue(value.getV2());
             model.setCellType(value.getV1());
@@ -148,8 +174,13 @@ public class WorkbookScanning {
         return new ScanningIterator(workbook);
     }
 
+    public static Iterator<String[]> scanAsArr(Workbook workbook, List<Tuple3<String,String,String>> areaList){
+        return internalScanAsArr(scan(workbook, areaList));
+    }
     public static Iterator<String[]> scanAsArr(Workbook workbook){
-        final Iterator<CellScanningModel> it = scan(workbook);
+        return internalScanAsArr(scan(workbook));
+    }
+    private static Iterator<String[]> internalScanAsArr(final Iterator<CellScanningModel> it){
         return new Iterator<String[]>() {
             boolean first = true;
             @Override
@@ -158,94 +189,14 @@ public class WorkbookScanning {
                 return it.hasNext();
             }
 
-            private String colorToString(short[] argb){
-                if(argb==null) return "";
-                String tArgb  = "";
-                for(int i=0; i < argb.length;i++){
-                    tArgb += String.format("%d", argb[i]);
-                    if(i<(argb.length-1)){
-                        tArgb+=",";
-                    }
-                }
-                return tArgb;
-            }
 
             @Override
             public String[] next() {
-                String[] arr = new String[31];
-                if(first){
-                    first=false;
-                    arr[0] = "Sheet Name";
-                    arr[1] = "Row index";
-                    arr[2] = "Col index";
-                    arr[3] = "Cell String";
-                    arr[4] = "Cell Type";
-                    arr[5] = "Cell Value";
-                    arr[6] = "Data Format";
-                    arr[7] = "Background Color";
+                if(!first)
+                    return it.next().toStringArr();
 
-                    arr[8] = "Background ARGB";
-                    arr[9] = "Border bot";
-                    arr[10] = "Border bot color";
-                    arr[11] = "Border top";
-                    arr[12] = "Border top color";
-                    arr[13] = "Border left";
-                    arr[14] = "Border left color";
-                    arr[15] = "Border right";
-                    arr[16] = "Border right color";
-                    arr[17] = "Fill Pattern";
-                    arr[18] = "Foreground color";
-                    arr[19] = "Foreground ARGB";
-                    arr[20] = "Horizontal Alignment";
-                    arr[21] = "Indentation";
-                    arr[22] = "Rotation";
-                    arr[23] = "Vertical Alignment";
-                    arr[24] = "Font Name";
-                    arr[25] = "Char set";
-                    arr[26] = "Font color";
-                    arr[27] = "Font color RGB";
-                    arr[28] = "Font Height";
-                    arr[29] = "Under line";
-                    arr[30] = "Type offset";
-                    return arr;
-                }
-                CellScanningModel cellModel = it.next();
-                arr[0] = cellModel.getSheetName();
-                arr[1] = String.valueOf(cellModel.getActRow());
-                arr[2] = String.valueOf(cellModel.getActCol());
-                arr[3] = cellModel.getCellStr();
-                arr[4] = cellModel.getCellType().name();
-                arr[5] = cellModel.getValue()==null?"[null]":cellModel.getValue().toString();
-                CellStyleScanningModel style = cellModel.getCellStyle();
-                arr[6] = style.getDataFromat();
-                arr[7] = style.getBackgroundColor().name();
-
-                arr[8] = colorToString(style.getBackgroundRGB());
-                arr[9] = style.getBorderBot().name();
-                arr[10] = style.getBorderBotColor().name();
-                arr[11] = style.getBorderTop().name();
-                arr[12] = style.getBorderTopColor().name();
-                arr[13] = style.getBorderLeft().name();
-                arr[14] = style.getBorderLeftColor().name();
-                arr[15] = style.getBorderRight().name();
-                arr[16] = style.getBorderRightColor().name();
-                arr[17] = style.getFillPatternType().name();
-                arr[18] = style.getForegroundColor().name();
-                arr[19] = colorToString(style.getForegroundRGB());
-                arr[20] = style.getHorizontalAlignment().name();
-                arr[21] = style.getIndentation()+"";
-                arr[22] = style.getRotation()+"";
-                arr[23] = style.getVerticalAlignment().name();
-                CellStyleScanningModel.Font font = style.getFont();
-                arr[24] = font.getName();
-                arr[25] = font.getCharSet()+"";
-                arr[26] = font.getColor()+"";
-                arr[27] = colorToString(font.getColorRgb());
-                arr[28] = font.getFontHeightInPoint()+"";
-                arr[29] = font.getIsUnderLine()+"";
-                arr[30] = font.getTypeOffset()+"";
-
-                return arr;
+                first=false;
+                return CellScanningModel.toStringArrHeader();
             }
 
             @Override

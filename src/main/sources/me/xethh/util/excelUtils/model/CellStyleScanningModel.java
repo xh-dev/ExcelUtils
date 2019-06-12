@@ -1,12 +1,16 @@
 package me.xethh.util.excelUtils.model;
 
+import me.xethh.util.excelUtils.common.ColorUtils;
 import org.apache.poi.hssf.usermodel.HSSFFont;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.IndexedColorMap;
 import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 
 public class CellStyleScanningModel {
@@ -24,12 +28,30 @@ public class CellStyleScanningModel {
     private IndexedColors borderLeftColor, borderRightColor, borderTopColor, borderBotColor;
     private FillPatternType fillPatternType;
     private IndexedColors backgroundColor;
-    private short[] backgroundRGB;
+    // private short[] backgroundRGB;
+    // private BigDecimal backgroundTint;
+    private ColorUtils.TempCTColor backgroundRGB;
     private IndexedColors foregroundColor;
-    private short[] foregroundRGB;
+    private ColorUtils.TempCTColor foregroundRGB;
+    // private short[] foregroundRGB;
+    // private BigDecimal foregroundTint;
     private boolean shrinkToFit;
 
 
+    private static double applyTint(int lum, double tint){
+        if(tint > 0){
+            return lum * (1.0-tint) + (255 - 255 * (1.0-tint));
+        } else if (tint < 0){
+            return lum*(1+tint);
+        } else {
+            return lum;
+        }
+    }
+    private static short applyTintToShort(int lum, double tint){
+        double dou = applyTint(lum, tint);
+        // return (short)(new BigDecimal(dou+"").setScale(0,BigDecimal.ROUND_HALF_UP)).intValue();
+        return (short)dou;
+    }
     public CellStyleScanningModel(Workbook workbook, CellStyle cellStyle) {
         this.dataFromat = cellStyle.getDataFormatString();
         this.font = new Font(workbook, workbook.getFontAt(cellStyle.getFontIndexAsInt()));
@@ -50,36 +72,57 @@ public class CellStyleScanningModel {
         this.borderTopColor = IndexedColors.fromInt(cellStyle.getTopBorderColor());
         this.borderBotColor = IndexedColors.fromInt(cellStyle.getBottomBorderColor());
         this.fillPatternType = cellStyle.getFillPattern();
+        IndexedColorMap indexedColor = ((XSSFWorkbook) workbook).getStylesSource().getIndexedColors();
+        byte[] rgb2;
         this.backgroundColor = IndexedColors.fromInt(cellStyle.getFillBackgroundColor());
         this.foregroundColor = IndexedColors.fromInt(cellStyle.getFillForegroundColor());
 
-        if(cellStyle.getFillBackgroundColorColor()!=null && cellStyle.getFillBackgroundColorColor() instanceof XSSFColor){
-            if(((XSSFColor) cellStyle.getFillBackgroundColorColor()).getARGB()!=null){
-                byte[] rgb = ((XSSFColor) cellStyle.getFillBackgroundColorColor()).getARGB();
-                this.foregroundRGB = new short[rgb.length];
-                for(int i=0;i<this.foregroundRGB.length;i++)
-                    this.foregroundRGB[i] = (short) (rgb[i] & 0xff);
-            }
-        }
-        else if(cellStyle.getFillBackgroundColorColor()!=null && cellStyle.getFillBackgroundColorColor() instanceof HSSFColor){
-            if(((HSSFColor) cellStyle.getFillBackgroundColorColor()).getTriplet()!=null){
-                this.foregroundRGB = ((HSSFColor) cellStyle.getFillBackgroundColorColor()).getTriplet();
-            }
-        }
-        if(cellStyle.getFillBackgroundColorColor()!=null && cellStyle.getFillBackgroundColorColor() instanceof XSSFColor){
-            if(((XSSFColor) cellStyle.getFillForegroundColorColor()).getARGB()!=null){
-                byte[] rgb = ((XSSFColor) cellStyle.getFillForegroundColorColor()).getARGB();
-                this.foregroundRGB = new short[rgb.length];
-                for(int i=0;i<this.foregroundRGB.length;i++)
-                    this.foregroundRGB[i] = (short) (rgb[i] & 0xff);
-            }
+        if(cellStyle.getFillBackgroundColorColor()!=null)
+            this.backgroundRGB = ColorUtils.toTempColor(workbook, cellStyle.getFillBackgroundColor(), cellStyle.getFillBackgroundColorColor());
+        // if(cellStyle.getFillBackgroundColorColor()!=null && cellStyle.getFillBackgroundColorColor() instanceof XSSFColor){
+        //     if(((XSSFColor) cellStyle.getFillBackgroundColorColor()).getARGB()!=null){
+        //         byte[] rgb = ((XSSFColor) cellStyle.getFillBackgroundColorColor()).getARGB();
+        //         this.foregroundRGB = new short[rgb.length];
+        //         for(int i=0;i<this.foregroundRGB.length;i++)
+        //             this.foregroundRGB[i] = (short) (rgb[i] & 0xff);
+        //     }
+        // }
+        // else if(cellStyle.getFillBackgroundColorColor()!=null && cellStyle.getFillBackgroundColorColor() instanceof HSSFColor){
+        //     if(((HSSFColor) cellStyle.getFillBackgroundColorColor()).getTriplet()!=null){
+        //         this.foregroundRGB = ((HSSFColor) cellStyle.getFillBackgroundColorColor()).getTriplet();
+        //     }
+        // }
 
-        }
-        else if(cellStyle.getFillBackgroundColorColor()!=null && cellStyle.getFillBackgroundColorColor() instanceof HSSFColor){
-            if(((HSSFColor) cellStyle.getFillForegroundColorColor()).getTriplet()!=null){
-                this.foregroundRGB = ((HSSFColor) cellStyle.getFillBackgroundColorColor()).getTriplet();
-            }
-        }
+        if(cellStyle.getFillForegroundColorColor()!=null)
+            this.foregroundRGB = ColorUtils.toTempColor(workbook, cellStyle.getFillForegroundColor(), cellStyle.getFillForegroundColorColor());
+
+        // if(cellStyle.getFillForegroundColorColor()!=null && cellStyle.getFillForegroundColorColor() instanceof XSSFColor){
+        //     if(((XSSFColor) cellStyle.getFillForegroundColorColor()).getARGB()!=null){
+        //         XSSFColor color = (XSSFColor) cellStyle.getFillForegroundColorColor();
+        //         System.out.println("----------");
+        //         System.out.println(color.isAuto());
+        //         System.out.println(color.isIndexed());
+        //         System.out.println(color.isRGB());
+        //         System.out.println(color.isThemed());
+        //         System.out.println(color.hasAlpha());
+        //         System.out.println(color.getTint());
+        //         System.out.println(color.hasTint());
+        //         System.out.println("----------");
+        //         String hext = ((XSSFColor) cellStyle.getFillForegroundColorColor()).getARGBHex();
+        //         short index = ((XSSFColor) cellStyle.getFillForegroundColorColor()).getIndex();
+        //         byte[] tint = ((XSSFColor) cellStyle.getFillForegroundColorColor()).getRGBWithTint();
+        //         byte[] rgb = ((XSSFColor) cellStyle.getFillForegroundColorColor()).getARGB();
+        //         this.foregroundRGB = new short[rgb.length];
+        //         for(int i=0;i<this.foregroundRGB.length;i++)
+        //             this.foregroundRGB[i] = applyTintToShort((rgb[i] & 0xff),color.getTint());
+        //     }
+        //
+        // }
+        // else if(cellStyle.getFillForegroundColorColor()!=null && cellStyle.getFillForegroundColorColor() instanceof HSSFColor){
+        //     if(((HSSFColor) cellStyle.getFillForegroundColorColor()).getTriplet()!=null){
+        //         this.foregroundRGB = ((HSSFColor) cellStyle.getFillBackgroundColorColor()).getTriplet();
+        //     }
+        // }
         Color fo = cellStyle.getFillForegroundColorColor();
 
         this.shrinkToFit = cellStyle.getShrinkToFit();
@@ -412,19 +455,51 @@ public class CellStyleScanningModel {
         this.shrinkToFit = shrinkToFit;
     }
 
-    public short[] getBackgroundRGB() {
+    // public short[] getBackgroundRGB() {
+    //     return backgroundRGB;
+    // }
+    //
+    // public void setBackgroundRGB(short[] backgroundRGB) {
+    //     this.backgroundRGB = backgroundRGB;
+    // }
+    //
+    // public short[] getForegroundRGB() {
+    //     return foregroundRGB;
+    // }
+    //
+    // public void setForegroundRGB(short[] foregroundRGB) {
+    //     this.foregroundRGB = foregroundRGB;
+    // }
+    //
+    // public BigDecimal getBackgroundTint() {
+    //     return backgroundTint;
+    // }
+    //
+    // public void setBackgroundTint(BigDecimal backgroundTint) {
+    //     this.backgroundTint = backgroundTint;
+    // }
+    //
+    // public BigDecimal getForegroundTint() {
+    //     return foregroundTint;
+    // }
+    //
+    // public void setForegroundTint(BigDecimal foregroundTint) {
+    //     this.foregroundTint = foregroundTint;
+    // }
+
+    public ColorUtils.TempCTColor getBackgroundRGB() {
         return backgroundRGB;
     }
 
-    public void setBackgroundRGB(short[] backgroundRGB) {
+    public void setBackgroundRGB(ColorUtils.TempCTColor backgroundRGB) {
         this.backgroundRGB = backgroundRGB;
     }
 
-    public short[] getForegroundRGB() {
+    public ColorUtils.TempCTColor getForegroundRGB() {
         return foregroundRGB;
     }
 
-    public void setForegroundRGB(short[] foregroundRGB) {
+    public void setForegroundRGB(ColorUtils.TempCTColor foregroundRGB) {
         this.foregroundRGB = foregroundRGB;
     }
 
@@ -451,9 +526,9 @@ public class CellStyleScanningModel {
                 ", borderBotColor=" + borderBotColor +
                 ", fillPatternType=" + fillPatternType +
                 ", backgroundColor=" + backgroundColor +
-                ", backgroundRGB=" + Arrays.toString(backgroundRGB) +
+                ", backgroundRGB=" + backgroundRGB +
                 ", foregroundColor=" + foregroundColor +
-                ", foregroundRGB=" + Arrays.toString(foregroundRGB) +
+                ", foregroundRGB=" + foregroundRGB +
                 ", shrinkToFit=" + shrinkToFit +
                 '}';
     }
