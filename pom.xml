@@ -51,7 +51,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
-    <test.version>4.11</test.version>
+    <test.version>4.13.1</test.version>
   </properties>
 
   <dependencies>
