@@ -7,6 +7,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
 
+import java.time.LocalDateTime;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -51,21 +52,9 @@ public class CellExtensionAbstract implements CellExtension{
         return cell.getCellType();
     }
 
-    @Deprecated
-    @Override
-    public CellType getCellTypeEnum() {
-        return cell.getCellTypeEnum();
-    }
-
     @Override
     public CellType getCachedFormulaResultType() {
         return cell.getCachedFormulaResultType();
-    }
-
-    @Deprecated
-    @Override
-    public CellType getCachedFormulaResultTypeEnum() {
-        return cell.getCachedFormulaResultTypeEnum();
     }
 
     @Override
@@ -76,6 +65,11 @@ public class CellExtensionAbstract implements CellExtension{
     @Override
     public void setCellValue(Date date) {
         cell.setCellValue(date);
+    }
+
+    @Override
+    public void setCellValue(LocalDateTime value) {
+        cell.setCellValue(value);
     }
 
     @Override
@@ -116,6 +110,11 @@ public class CellExtensionAbstract implements CellExtension{
     @Override
     public Date getDateCellValue() {
         return cell.getDateCellValue();
+    }
+
+    @Override
+    public LocalDateTime getLocalDateTimeCellValue() {
+        return cell.getLocalDateTimeCellValue();
     }
 
     @Override

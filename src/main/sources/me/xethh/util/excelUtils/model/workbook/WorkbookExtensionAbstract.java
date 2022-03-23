@@ -2,6 +2,7 @@ package me.xethh.util.excelUtils.model.workbook;
 
 import me.xethh.util.excelUtils.model.sheet.SheetExtension;
 import org.apache.poi.ss.SpreadsheetVersion;
+import org.apache.poi.ss.formula.EvaluationWorkbook;
 import org.apache.poi.ss.formula.udf.UDFFinder;
 import org.apache.poi.ss.usermodel.*;
 
@@ -117,19 +118,13 @@ public abstract class WorkbookExtensionAbstract implements WorkbookExtension{
 
     @Deprecated
     @Override
-    public short getNumberOfFonts() {
+    public int getNumberOfFonts() {
         return workbook.getNumberOfFonts();
     }
 
     @Override
     public int getNumberOfFontsAsInt() {
         return workbook.getNumberOfFontsAsInt();
-    }
-
-    @Deprecated
-    @Override
-    public Font getFontAt(short i) {
-        return workbook.getFontAt(i);
     }
 
     @Override
@@ -182,33 +177,9 @@ public abstract class WorkbookExtensionAbstract implements WorkbookExtension{
         return workbook.getAllNames();
     }
 
-    @Deprecated
-    @Override
-    public Name getNameAt(int i) {
-        return workbook.getNameAt(i);
-    }
-
     @Override
     public Name createName() {
         return workbook.createName();
-    }
-
-    @Deprecated
-    @Override
-    public int getNameIndex(String s) {
-        return workbook.getNameIndex(s);
-    }
-
-    @Deprecated
-    @Override
-    public void removeName(int i) {
-        workbook.removeName(i);
-    }
-
-    @Deprecated
-    @Override
-    public void removeName(String s) {
-        workbook.removeName(s);
     }
 
     @Override
@@ -329,6 +300,11 @@ public abstract class WorkbookExtensionAbstract implements WorkbookExtension{
     @Override
     public int addOlePackage(byte[] bytes, String s, String s1, String s2) throws IOException {
         return workbook.addOlePackage(bytes, s, s1, s2);
+    }
+
+    @Override
+    public EvaluationWorkbook createEvaluationWorkbook() {
+        return workbook.createEvaluationWorkbook();
     }
 
     @Override
